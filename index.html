@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Daily Nuts — One Board a Day</title>
-<meta name="description" content="A daily poker puzzle. One shared five-card board, three attempts per board to find the strongest possible hand — the nuts.">
-<meta property="og:title" content="The Daily Nuts — One Board a Day">
+<title>The Daily Nuts</title>
+<meta name="description" content="A daily poker puzzle. Three shared five-card boards, three attempts each to find the strongest possible hand — the nuts.">
+<meta property="og:title" content="The Daily Nuts">
 <meta property="og:description" content="Three boards, escalating difficulty, same for everyone on Earth. Can you find the nuts?">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://daily-nuts.vercel.app">
@@ -222,6 +222,11 @@
 </head>
 <body>
 <div id="app">
+  <div id="rapidLoader" style="display:none; position:fixed; inset:0; background:var(--bg); z-index:100; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+    <div style="font-family:'Playfair Display',serif; font-size:24px; color:var(--gold-bright); margin-bottom:8px;">Shuffling the deck...</div>
+    <div style="font-size:13px; color:var(--text-dim);">Pre-loading Devilish boards</div>
+  </div>
+
   <header class="top">
     <button class="hbtn" onclick="openModal('helpModal')" title="How to play">?</button>
     <div class="brand">THE DAILY NUTS</div>
@@ -233,7 +238,7 @@
 
   <div class="meta-line" id="metaLine"></div>
   <div class="board-row" id="boardRow"></div>
-  <div class="board-cap">Today's board — shared by every player in the world</div>
+  <div class="board-cap">Today's gauntlet — three boards, shared by every player</div>
   <div class="prompt" id="promptLine">Pick the <b>two hole cards</b> that make the <b>best possible hand</b> on this board.</div>
 
   <div class="pick-row" id="pickRow">
@@ -249,7 +254,7 @@
   <div id="endPanelWrap"></div>
 
   <footer class="series">
-    One board a day · Sharpen your table vision<br>
+    The Daily Nuts · Sharpen your table vision<br>
     Not real-money poker — just the read.
   </footer>
 </div>
@@ -273,7 +278,10 @@
     </div>
     <p style="margin-top:12px;">Any two cards that tie the best hand count as a win.</p>
     <p style="font-size:12px;">New to hand rankings? Tap ♠ in the header for the cheat sheet.</p>
-    <div class="btn-row" style="margin-top:16px;"><button class="btn primary" onclick="closeModals()">Deal me in</button></div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn primary" onclick="closeModals()">Deal me in</button>
+      <button class="btn ghost" onclick="closeModals();startRapidFire()">Rapid Fire (30s)</button>
+    </div>
   </div>
 </div>
 
@@ -550,10 +558,86 @@ function playedMs(){
 }
 
 /* game runtime */
-let mode='daily'; // 'daily' | 'practice'
+let mode='daily'; // 'daily' | 'practice' | 'rapid'
 let DAILY=null;   // {gens:[{board,sol,diff} ×3]}
 let G=null;       // current round: {roundIdx, board, sol, diff, guesses, done, win}
 let picks=[];
+
+/* ============================================================
+   RAPID FIRE — arcade mode (does not touch daily streaks)
+   ============================================================ */
+let rapidQueue = [];
+let rapidScore = 0;
+let rapidTime = 30;
+let rapidInterval = null;
+
+function startRapidFire() {
+  document.getElementById('rapidLoader').style.display = 'flex';
+
+  // Yield 50ms so UI paints before locking the thread to compute
+  setTimeout(() => {
+    rapidQueue = [];
+    rapidScore = 0;
+    rapidTime = 30;
+    if (typeof mode === 'undefined') window.mode = 'rapid';
+    else mode = 'rapid';
+
+    // Pre-compute 15 hard boards
+    for (let i = 0; i < 15; i++) {
+      rapidQueue.push(generateBoard('rapid|' + Date.now() + '|' + i, 'hard'));
+    }
+
+    document.getElementById('rapidLoader').style.display = 'none';
+    loadRapidBoard();
+
+    clearInterval(rapidInterval);
+    rapidInterval = setInterval(tickRapidClock, 1000);
+  }, 50);
+}
+
+function loadRapidBoard() {
+  const gen = rapidQueue[rapidScore];
+  G = { board: gen.board, sol: gen.sol, diff: gen.diff, guesses: [], done: false, win: false };
+  renderAll();
+
+  const metaLine = document.getElementById('metaLine');
+  if (metaLine) {
+    metaLine.innerHTML = `
+      <span style="color:var(--danger); font-weight:700;">RAPID FIRE</span> ·
+      Score: <b style="color:var(--cream);">${rapidScore}</b> ·
+      ⏱ <span id="stopwatch" style="color:var(--gold-bright); font-weight:bold;">${rapidTime}s</span>
+    `;
+  }
+}
+
+function tickRapidClock() {
+  rapidTime--;
+  const sw = document.getElementById('stopwatch');
+  if (sw) sw.textContent = rapidTime + 's';
+
+  if (rapidTime <= 0) {
+    clearInterval(rapidInterval);
+    G.done = true;
+    renderAll();
+
+    const wrap = document.getElementById('endPanelWrap');
+    if (wrap) {
+      wrap.innerHTML = `
+        <div class="end-panel">
+          <div class="end-title">Time's Up</div>
+          <div class="end-sub">RAPID FIRE SCORE: ${rapidScore}</div>
+          <div class="reading">You cracked <b>${rapidScore} Devilish boards</b> in 30 seconds.</div>
+          <div class="btn-row" style="margin-top:14px;">
+            <button class="btn primary" onclick="startRapidFire()">Play Again</button>
+            <button class="btn ghost" onclick="location.reload()">Back to Daily</button>
+          </div>
+        </div>
+      `;
+    }
+    const submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) submitBtn.disabled = true;
+  }
+}
 
 /* ============================================================
    RENDER HELPERS
@@ -605,6 +689,12 @@ function startPractice(){
     if(catOf(sol.score)<4)continue;
     gen={board,sol,diff:classify(board,sol)};
   }
+  // Safe fallback — never crash the UI if the loop finds nothing
+  if(!gen){
+    const board=[{r:3,s:'♠'},{r:5,s:'♥'},{r:12,s:'♥'},{r:10,s:'♥'},{r:9,s:'♦'}];
+    const sol=solveBoard(board);
+    gen={board,sol,diff:classify(board,sol)};
+  }
   G={board:gen.board,sol:gen.sol,diff:gen.diff,guesses:[],done:false,win:false};
   picks=[];
   renderAll();
@@ -623,7 +713,7 @@ function renderAll(){
   const sb=document.getElementById('submitBtn');
   sb.textContent='Submit Guess';
   sb.onclick=submitGuess;
-  if(G.done)showEnd();
+  if(G.done){ if(mode!=='rapid') showEnd(); }
   updateSubmit();
   tickStopwatch();
 }
@@ -752,6 +842,30 @@ function hintFor(guessScore,attemptIdx){
    ============================================================ */
 function submitGuess(){
   if(picks.length!==2||G.done)return;
+  if (typeof mode !== 'undefined' && mode === 'rapid') {
+    const sc = best7([...G.board, ...picks]);
+    if (sc === G.sol.score) {
+      rapidScore++;
+      picks = [];
+      if (rapidScore < rapidQueue.length) {
+        loadRapidBoard();
+      } else {
+        // They actually beat all 15 pre-computed boards
+        rapidTime = 0;
+        tickRapidClock();
+      }
+    } else {
+      const pickRow = document.getElementById('pickRow');
+      if (pickRow) {
+        pickRow.classList.add('shake');
+        setTimeout(() => pickRow.classList.remove('shake'), 400);
+      }
+      picks = [];
+      renderPicks();
+      updateSubmit();
+    }
+    return;
+  }
   const dup=G.guesses.some(g=>{
     const ks=g.map(cardKey).sort().join();
     return ks===picks.map(cardKey).sort().join();
@@ -963,6 +1077,17 @@ function tickCountdown(){
   el.textContent=`${String(h).padStart(2,'0')}:${String(mi).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
   setTimeout(tickCountdown,1000);
 }
+
+/* Global date rollover — reload when the local day changes, even if the
+   player never finished board 3 or left a tab idling mid-gauntlet. */
+function checkDateRollover(){
+  if(localDateStr()!==todayStr) location.reload();
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible') checkDateRollover();
+});
+window.addEventListener('focus', checkDateRollover);
+setInterval(checkDateRollover, 30000);
 
 /* ============================================================
    MODALS CONTENT
