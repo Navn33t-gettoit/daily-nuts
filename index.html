@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Daily Nuts — One Board a Day</title>
+<meta name="description" content="A daily poker puzzle. One shared five-card board, three attempts per board to find the strongest possible hand — the nuts.">
+<meta property="og:title" content="The Daily Nuts — One Board a Day">
+<meta property="og:description" content="Three boards, escalating difficulty, same for everyone on Earth. Can you find the nuts?">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0b0d0d">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🃏</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d0d;
+    --felt:#0f3d2e;
+    --gold:#cba135;
+    --gold-bright:#e6c565;
+    --cream:#f3ead9;
+    --text-dim:#9aa39c;
+    --card-bg:#f3ead9;
+    --danger:#b4425a;
+    --ok:#4a9d6f;
+    --warn:#d9a441;
+  }
+  *{box-sizing:border-box;}
+  button,.dg-card,.pick-slot{touch-action:manipulation;}
+  html,body{
+    margin:0;padding:0;min-height:100%;
+    font-family:'Inter',system-ui,sans-serif;
+    background:radial-gradient(ellipse at top, #17201b 0%, var(--bg) 60%);
+    color:var(--cream);
+  }
+  h1,h2,h3{font-family:'Playfair Display',Georgia,serif;margin:0;}
+  #app{max-width:560px;margin:0 auto;padding:14px 14px 40px;display:flex;flex-direction:column;min-height:100vh;}
+
+  /* ---------- header ---------- */
+  header.top{
+    display:flex;align-items:center;justify-content:space-between;
+    border-bottom:1px solid rgba(203,161,53,.3);
+    padding-bottom:10px;margin-bottom:12px;
+  }
+  .brand{font-family:'Playfair Display',serif;font-size:21px;font-weight:800;color:var(--gold-bright);letter-spacing:1px;}
+  .hdr-btns{display:flex;gap:8px;}
+  .hbtn{
+    width:32px;height:32px;border-radius:4px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);
+    color:var(--cream);cursor:pointer;font-size:15px;line-height:1;
+    display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;
+  }
+  .hbtn:hover{background:rgba(255,255,255,.12);}
+
+  .meta-line{
+    text-align:center;font-size:11.5px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--text-dim);margin:2px 0 12px;
+  }
+  .meta-line b{color:var(--gold);}
+  .practice-tag{color:var(--warn);font-weight:700;}
+
+  /* ---------- cards ---------- */
+  .board-row{display:flex;gap:8px;justify-content:center;margin-bottom:6px;}
+  .bcard{
+    width:56px;height:78px;background:var(--card-bg);border-radius:7px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-weight:700;font-size:20px;line-height:1;
+    box-shadow:0 4px 10px rgba(0,0,0,.45);
+    animation:dealIn .45s ease backwards;
+  }
+  .bcard span{font-size:17px;margin-top:2px;}
+  .bcard:nth-child(1){animation-delay:.05s}.bcard:nth-child(2){animation-delay:.13s}
+  .bcard:nth-child(3){animation-delay:.21s}.bcard:nth-child(4){animation-delay:.29s}
+  .bcard:nth-child(5){animation-delay:.37s}
+  @keyframes dealIn{from{opacity:0;transform:translateY(-14px) rotate(-4deg);}to{opacity:1;transform:none;}}
+  .red{color:#a3283f;}
+  .black{color:#1c1c1c;}
+  .board-cap{text-align:center;font-size:10px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:14px;}
+
+  .prompt{text-align:center;font-size:13.5px;color:var(--text-dim);margin:2px 0 12px;line-height:1.5;}
+  .prompt b{color:var(--gold-bright);}
+
+  /* ---------- picks & attempts ---------- */
+  .pick-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px;}
+  .pick-slot{
+    width:46px;height:64px;border-radius:6px;
+    border:1.5px dashed rgba(203,161,53,.5);
+    background:rgba(255,255,255,.03);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-weight:700;font-size:16px;cursor:pointer;
+  }
+  .pick-slot.filled{background:var(--card-bg);border:none;box-shadow:0 3px 8px rgba(0,0,0,.4);}
+  .pick-plus{color:rgba(203,161,53,.6);font-size:18px;font-weight:400;}
+  .att-dots{display:flex;gap:7px;margin-left:14px;}
+  .att-dot{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.15);}
+  .att-dot.win{background:var(--ok);}
+  .att-dot.close{background:var(--warn);}
+  .att-dot.miss{background:var(--danger);}
+
+  /* ---------- deck grid ---------- */
+  .deck-grid{display:grid;grid-template-columns:repeat(13,1fr);gap:3px;margin:6px 0 12px;}
+  .dg-card{
+    aspect-ratio:5/7;background:var(--card-bg);border-radius:3px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:10.5px;font-weight:700;line-height:1.05;cursor:pointer;user-select:none;
+    transition:transform .08s ease;
+  }
+  .dg-card span{font-size:9px;}
+  .dg-card:hover:not(.gone){transform:translateY(-2px);}
+  .dg-card.gone{opacity:.13;cursor:default;}
+  .dg-card.gone:hover{transform:none;}
+  .dg-card.picked{outline:2px solid var(--gold-bright);transform:translateY(-2px);box-shadow:0 0 10px rgba(230,197,101,.5);}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    border:1.5px solid var(--gold);border-radius:3px;background:transparent;
+    color:var(--gold-bright);padding:12px 30px;font-size:13px;letter-spacing:2px;
+    text-transform:uppercase;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;
+    transition:all .15s ease;
+  }
+  .btn:hover:not(:disabled){background:var(--gold);color:#1a1408;}
+  .btn.primary{background:linear-gradient(180deg,var(--gold-bright),var(--gold));color:#1a1408;border:none;box-shadow:0 5px 16px rgba(203,161,53,.25);}
+  .btn.primary:hover:not(:disabled){filter:brightness(1.08);}
+  .btn.ghost{border-color:rgba(255,255,255,.25);color:var(--cream);}
+  .btn:disabled{opacity:.3;cursor:not-allowed;}
+  .btn-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+  .submit-wrap{text-align:center;margin-bottom:14px;}
+
+  /* ---------- guess log ---------- */
+  .guess-entry{
+    background:rgba(255,255,255,.035);border-left:3px solid var(--danger);
+    border-radius:4px;padding:10px 14px;margin-bottom:9px;
+    font-size:13px;line-height:1.55;color:var(--text-dim);
+    animation:slideIn .3s ease;
+  }
+  .guess-entry.win{border-left-color:var(--ok);}
+  .guess-entry.close{border-left-color:var(--warn);}
+  .guess-entry b{color:var(--cream);}
+  .guess-entry .hint{color:var(--gold-bright);}
+  .gcards{display:inline-flex;gap:4px;vertical-align:middle;margin-right:6px;}
+  .icard{
+    background:var(--card-bg);border-radius:3px;padding:2px 5px;
+    font-size:11.5px;font-weight:700;display:inline-block;
+  }
+  @keyframes slideIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+
+  /* ---------- end panel ---------- */
+  .end-panel{
+    background:linear-gradient(160deg,#1b2420,#0f150f);
+    border:1px solid var(--gold);border-radius:10px;
+    padding:24px 22px;text-align:center;margin-top:6px;
+    animation:slideIn .4s ease;
+  }
+  .end-title{font-family:'Playfair Display',serif;font-size:26px;font-weight:800;color:var(--gold-bright);margin-bottom:4px;}
+  .end-sub{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:14px;}
+  .nuts-reveal{display:flex;gap:8px;justify-content:center;margin:10px 0 6px;}
+  .nuts-name{font-family:'Playfair Display',serif;font-size:19px;color:var(--cream);margin-bottom:8px;}
+  .reading{
+    font-size:13px;color:var(--text-dim);line-height:1.6;
+    background:rgba(203,161,53,.07);border:1px solid rgba(203,161,53,.3);
+    border-radius:6px;padding:12px 16px;margin:12px 0;text-align:left;
+  }
+  .reading b{color:var(--gold-bright);}
+  .countdown{font-size:12px;color:var(--text-dim);margin-top:14px;letter-spacing:1px;}
+  .countdown b{color:var(--gold-bright);font-variant-numeric:tabular-nums;}
+  .streak-line{font-size:13px;color:var(--text-dim);margin:8px 0 2px;}
+  .streak-line b{color:var(--gold-bright);}
+
+  /* ---------- modals ---------- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(4,5,4,.85);
+    display:none;align-items:center;justify-content:center;z-index:60;padding:16px;
+  }
+  .overlay.active{display:flex;}
+  .modal{
+    background:linear-gradient(160deg,#171d18,#0d100d);
+    border:1px solid var(--gold);border-radius:10px;
+    padding:26px 26px;max-width:480px;width:100%;max-height:86vh;overflow-y:auto;
+  }
+  .modal h2{color:var(--gold-bright);margin-bottom:10px;font-size:24px;}
+  .modal p{font-size:13.5px;color:var(--text-dim);line-height:1.65;margin:0 0 12px;}
+  .modal p b{color:var(--cream);}
+  .modal h4{color:var(--gold);font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:16px 0 8px;}
+  .legend{font-size:13px;color:var(--text-dim);line-height:1.9;}
+  .ladder-row{display:flex;align-items:center;gap:10px;font-size:12.5px;margin:6px 0;color:var(--text-dim);}
+  .ladder-row b{color:var(--cream);width:118px;flex-shrink:0;font-weight:600;}
+
+  .stat-grid{display:flex;justify-content:space-around;text-align:center;margin:14px 0;}
+  .stat-grid b{display:block;font-family:'Playfair Display',serif;font-size:28px;color:var(--gold-bright);}
+  .stat-grid span{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);}
+  .dist-row{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:12px;color:var(--text-dim);}
+  .dist-bar{height:16px;background:var(--gold);border-radius:2px;min-width:18px;color:#1a1408;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;}
+
+  footer.series{
+    margin-top:auto;padding-top:26px;text-align:center;
+    font-size:11px;letter-spacing:1px;color:var(--text-dim);line-height:1.8;
+  }
+  footer.series a{color:var(--gold);text-decoration:none;}
+  footer.series a:hover{color:var(--gold-bright);}
+
+  #toast{
+    position:fixed;bottom:26px;left:50%;transform:translateX(-50%);
+    background:var(--gold);color:#1a1408;font-weight:700;font-size:13px;
+    padding:10px 22px;border-radius:5px;display:none;z-index:80;
+    box-shadow:0 8px 24px rgba(0,0,0,.5);
+  }
+
+  .shake{animation:shake .35s ease;}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+  @media (max-width:420px){
+    .bcard{width:48px;height:68px;font-size:17px;}
+    .brand{font-size:17px;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <button class="hbtn" onclick="openModal('helpModal')" title="How to play">?</button>
+    <div class="brand">THE DAILY NUTS</div>
+    <div class="hdr-btns">
+      <button class="hbtn" onclick="openModal('ladderModal')" title="Hand rankings">♠</button>
+      <button class="hbtn" onclick="renderStats();openModal('statsModal')" title="Stats">▤</button>
+    </div>
+  </header>
+
+  <div class="meta-line" id="metaLine"></div>
+  <div class="board-row" id="boardRow"></div>
+  <div class="board-cap">Today's board — shared by every player in the world</div>
+  <div class="prompt" id="promptLine">Pick the <b>two hole cards</b> that make the <b>best possible hand</b> on this board.</div>
+
+  <div class="pick-row" id="pickRow">
+    <div class="pick-slot" id="slot0" onclick="clearSlot(0)"><span class="pick-plus">+</span></div>
+    <div class="pick-slot" id="slot1" onclick="clearSlot(1)"><span class="pick-plus">+</span></div>
+    <div class="att-dots" id="attDots"></div>
+  </div>
+
+  <div id="guessLog"></div>
+  <div class="deck-grid" id="deckGrid"></div>
+  <div class="submit-wrap"><button class="btn primary" id="submitBtn" disabled onclick="submitGuess()">Submit Guess</button></div>
+
+  <div id="endPanelWrap"></div>
+
+  <footer class="series">
+    One board a day · Sharpen your table vision<br>
+    Not real-money poker — just the read.
+  </footer>
+</div>
+
+<!-- HELP -->
+<div class="overlay" id="helpModal">
+  <div class="modal">
+    <h2>How to Play</h2>
+    <p>Every day, a <b>three-board gauntlet</b> — the same boards for everyone on Earth. Each board hides <b>two hole cards that make the strongest possible hand</b>. Poker players call that hand <b>"the nuts."</b> You get <b>three attempts per board</b>, and every miss teaches you how to read the board better.</p>
+    <h4>The gauntlet</h4>
+    <p>Boards escalate: <b>♠ Gentle → ♠♠ Tricky → ♠♠♠ Devilish</b>. Cracking <b>board one keeps your streak alive</b> — the other two are for the clean sweep. The clock runs, but it only times your bragging rights.</p>
+    <h4>Feedback colors</h4>
+    <div class="legend">
+      🟩 &nbsp;You found the nuts<br>
+      🟨 &nbsp;Right kind of hand, but not the best one<br>
+      🟥 &nbsp;A bigger kind of hand was possible
+    </div>
+    <p style="margin-top:12px;">Any two cards that tie the best hand count as a win.</p>
+    <p style="font-size:12px;">New to hand rankings? Tap ♠ in the header for the ladder.</p>
+    <div class="btn-row" style="margin-top:16px;"><button class="btn primary" onclick="closeModals()">Deal me in</button></div>
+  </div>
+</div>
+
+<!-- LADDER -->
+<div class="overlay" id="ladderModal">
+  <div class="modal">
+    <h2>The Hand Ladder</h2>
+    <p>Best to worst. A hand beats every hand below it.</p>
+    <div id="ladderList"></div>
+    <div class="btn-row" style="margin-top:16px;"><button class="btn ghost" onclick="closeModals()">Close</button></div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="overlay" id="statsModal">
+  <div class="modal">
+    <h2>Your Record</h2>
+    <div class="stat-grid" id="statGrid"></div>
+    <h4>Attempts to crack board one</h4>
+    <div id="distRows"></div>
+    <div class="btn-row" style="margin-top:16px;"><button class="btn ghost" onclick="closeModals()">Close</button></div>
+  </div>
+</div>
+
+<!-- ROUND RESULT -->
+<div class="overlay" id="resultModal">
+  <div class="modal" id="resultModalBody"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   CARDS & EVALUATOR
+   ============================================================ */
+const SUITS=['♠','♥','♦','♣'];
+const SUIT_COLOR={'♠':'black','♣':'black','♥':'red','♦':'red'};
+const RANK_FACE={11:'J',12:'Q',13:'K',14:'A'};
+const RANK_WORD={2:'Two',3:'Three',4:'Four',5:'Five',6:'Six',7:'Seven',8:'Eight',9:'Nine',10:'Ten',11:'Jack',12:'Queen',13:'King',14:'Ace'};
+const CATNAME=['High Card','One Pair','Two Pair','Three of a Kind','Straight','Flush','Full House','Four of a Kind','Straight Flush'];
+function rankLabel(r){return RANK_FACE[r]||String(r);}
+function rankWord(r){return RANK_WORD[r];}
+function plural(r){const w=RANK_WORD[r];return w+(w==='Six'?'es':'s');}
+function cardKey(c){return c.r+c.s;}
+function freshDeck(){const d=[];for(let r=2;r<=14;r++)for(const s of SUITS)d.push({r,s});return d;}
+
+/* 5-card evaluator → comparable integer (cat + 5 tiebreak ranks, 4 bits each) */
+function eval5(cs){
+  const rs=cs.map(c=>c.r).sort((a,b)=>b-a);
+  const flush=cs.every(c=>c.s===cs[0].s);
+  let straightHigh=0;
+  const uniqCount=new Set(rs).size;
+  if(uniqCount===5){
+    if(rs[0]-rs[4]===4) straightHigh=rs[0];
+    else if(rs[0]===14&&rs[1]===5&&rs[4]===2) straightHigh=5;
+  }
+  const counts={};rs.forEach(r=>counts[r]=(counts[r]||0)+1);
+  const groups=Object.entries(counts).map(([r,c])=>({r:+r,c})).sort((a,b)=>b.c-a.c||b.r-a.r);
+  let cat,tie;
+  if(straightHigh&&flush){cat=8;tie=[straightHigh];}
+  else if(groups[0].c===4){cat=7;tie=[groups[0].r,groups[1].r];}
+  else if(groups[0].c===3&&groups[1].c===2){cat=6;tie=[groups[0].r,groups[1].r];}
+  else if(flush){cat=5;tie=rs;}
+  else if(straightHigh){cat=4;tie=[straightHigh];}
+  else if(groups[0].c===3){cat=3;tie=[groups[0].r,groups[1].r,groups[2].r];}
+  else if(groups[0].c===2&&groups[1].c===2){cat=2;tie=[groups[0].r,groups[1].r,groups[2].r];}
+  else if(groups[0].c===2){cat=1;tie=[groups[0].r,groups[1].r,groups[2].r,groups[3].r];}
+  else {cat=0;tie=rs;}
+  let score=cat;
+  for(let i=0;i<5;i++) score=score*16+(tie[i]||0);
+  return score;
+}
+/* best 5-of-7 */
+const COMBO7=[];
+(function(){
+  for(let a=0;a<7;a++)for(let b=a+1;b<7;b++)for(let c=b+1;c<7;c++)for(let d=c+1;d<7;d++)for(let e=d+1;e<7;e++)COMBO7.push([a,b,c,d,e]);
+})();
+function best7(seven){
+  let best=-1;
+  for(const idx of COMBO7){
+    const sc=eval5([seven[idx[0]],seven[idx[1]],seven[idx[2]],seven[idx[3]],seven[idx[4]]]);
+    if(sc>best)best=sc;
+  }
+  return best;
+}
+function catOf(score){return Math.floor(score/1048576);}
+function decodeScore(s){
+  const cat=Math.floor(s/1048576);let rest=s%1048576;const t=[];
+  for(let i=4;i>=0;i--){const p=Math.pow(16,i);t.push(Math.floor(rest/p));rest%=p;}
+  return {cat,t};
+}
+function describeScore(s){
+  const {cat,t}=decodeScore(s);
+  switch(cat){
+    case 8: return t[0]===14?'a Royal Flush':'a Straight Flush, '+rankWord(t[0])+' high';
+    case 7: return 'Four of a Kind — '+plural(t[0]);
+    case 6: return 'a Full House — '+plural(t[0])+' over '+plural(t[1]);
+    case 5: return 'a Flush, '+rankWord(t[0])+' high';
+    case 4: return 'a Straight, '+rankWord(t[0])+' high';
+    case 3: return 'Three of a Kind — '+plural(t[0]);
+    case 2: return 'Two Pair — '+plural(t[0])+' and '+plural(t[1]);
+    case 1: return 'a Pair of '+plural(t[0]);
+    default:return rankWord(t[0])+' high';
+  }
+}
+
+/* ============================================================
+   DETERMINISTIC SEED
+   ============================================================ */
+function xmur3(str){
+  let h=1779033703^str.length;
+  for(let i=0;i<str.length;i++){
+    h=Math.imul(h^str.charCodeAt(i),3432918353);
+    h=h<<13|h>>>19;
+  }
+  return function(){
+    h=Math.imul(h^(h>>>16),2246822507);
+    h=Math.imul(h^(h>>>13),3266489909);
+    return (h^=h>>>16)>>>0;
+  };
+}
+function mulberry32(a){
+  return function(){
+    let t=a+=0x6D2B79F5;
+    t=Math.imul(t^t>>>15,t|1);
+    t^=t+Math.imul(t^t>>>7,t|61);
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function seededShuffle(arr,rng){
+  const a=arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(rng()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+/* ============================================================
+   SOLVER & CURATION
+   ============================================================ */
+function solveBoard(board){
+  const seen=new Set(board.map(cardKey));
+  const deck=freshDeck().filter(c=>!seen.has(cardKey(c)));
+  let best=-1,winners=[];
+  for(let i=0;i<deck.length;i++){
+    for(let j=i+1;j<deck.length;j++){
+      const sc=best7([...board,deck[i],deck[j]]);
+      if(sc>best){best=sc;winners=[[deck[i],deck[j]]];}
+      else if(sc===best)winners.push([deck[i],deck[j]]);
+    }
+  }
+  winners.sort((A,B)=>(B[0].r+B[1].r)-(A[0].r+A[1].r));
+  return {score:best,winners};
+}
+function has3Run(board){
+  const set=new Set(board.map(c=>c.r));
+  if(set.has(14))set.add(1);
+  for(let r=1;r<=12;r++)if(set.has(r)&&set.has(r+1)&&set.has(r+2))return true;
+  return false;
+}
+function boardTexture(board){
+  const suitCount={};board.forEach(c=>suitCount[c.s]=(suitCount[c.s]||0)+1);
+  const suitMax=Math.max(...Object.values(suitCount));
+  const flushSuit=Object.keys(suitCount).find(s=>suitCount[s]>=3)||null;
+  const rankCount={};board.forEach(c=>rankCount[c.r]=(rankCount[c.r]||0)+1);
+  const paired=Object.values(rankCount).some(c=>c>=2);
+  const pairRank=+(Object.keys(rankCount).sort((a,b)=>rankCount[b]-rankCount[a]||b-a)[0]);
+  return {suitMax,flushSuit,paired,pairRank};
+}
+/* difficulty: how deceptive is the read? */
+function classify(board,sol){
+  const cat=catOf(sol.score);
+  const tx=boardTexture(board);
+  if(cat===8) return 'hard';                                  // straight flush hiding behind a flush
+  if(cat===7) return 'easy';                                  // paired board → quads
+  if(cat===5) return tx.suitMax>=4?'easy':'medium';           // flush: pick the two best of the suit
+  if(cat===4) return has3Run(board)?'medium':'hard';          // gapped straights are sneaky
+  return 'medium';
+}
+const ROUND_TARGETS=['easy','medium','hard'];
+const DIFF_LABEL={easy:'♠ Gentle',medium:'♠♠ Tricky',hard:'♠♠♠ Devilish'};
+
+function generateBoard(seedKey,target){
+  let fallback=null;
+  for(let k=0;k<250;k++){
+    const rng=mulberry32(xmur3(seedKey+'|'+k)());
+    const board=seededShuffle(freshDeck(),rng).slice(0,5);
+    const tx=boardTexture(board);
+    // cheap pre-filters to keep generation fast
+    if(target==='easy'&&!(tx.paired||tx.suitMax>=3))continue;
+    if(target==='hard'&&!(tx.suitMax>=3||!has3Run(board)))continue;
+    const sol=solveBoard(board);
+    if(eval5(board)===sol.score)continue;      // board plays itself — dud
+    if(catOf(sol.score)<4)continue;            // nuts must be a straight or better
+    const diff=classify(board,sol);
+    if(diff===target)return {board,sol,diff};
+    if(!fallback)fallback={board,sol,diff};
+  }
+  if(fallback)return fallback;
+  // last resort: drop the pre-filters and take the first board that passes the base rules
+  for(let k=250;k<600;k++){
+    const rng=mulberry32(xmur3(seedKey+'|'+k)());
+    const board=seededShuffle(freshDeck(),rng).slice(0,5);
+    const sol=solveBoard(board);
+    if(eval5(board)===sol.score)continue;
+    if(catOf(sol.score)<4)continue;
+    return {board,sol,diff:classify(board,sol)};
+  }
+  // mathematically unreachable, but never crash the daily
+  const board=[{r:3,s:'♠'},{r:5,s:'♥'},{r:12,s:'♥'},{r:10,s:'♥'},{r:9,s:'♦'}];
+  const sol=solveBoard(board);
+  return {board,sol,diff:classify(board,sol)};
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const EPOCH='2026-07-17'; // puzzle #1
+function localDateStr(d){
+  d=d||new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function puzzleNumber(dateStr){
+  const [y1,m1,d1]=EPOCH.split('-').map(Number);
+  const [y2,m2,d2]=dateStr.split('-').map(Number);
+  return Math.round((new Date(y2,m2-1,d2)-new Date(y1,m1-1,d1))/86400000)+1;
+}
+function prevDateStr(dateStr){
+  const [y,m,d]=dateStr.split('-').map(Number);
+  return localDateStr(new Date(y,m-1,d-1));
+}
+
+let store={};
+try{ store=JSON.parse(localStorage.getItem('dailyNuts')||'{}')||{}; }catch(e){ store={}; }
+if(!store.meta)store.meta={streak:0,maxStreak:0,played:0,wins:0,dist:{1:0,2:0,3:0},helpSeen:false,lastWinDate:null};
+function save(){ try{ localStorage.setItem('dailyNuts',JSON.stringify(store)); }catch(e){ /* private mode — play on without persistence */ } }
+
+const todayStr=localDateStr();
+if(store.meta.sweeps===undefined)store.meta.sweeps=0;
+if(!store.today||store.today.date!==todayStr||!store.today.rounds||store.today.activeMs===undefined){
+  store.today={date:todayStr,round:0,activeMs:0,segStart:null,allDone:false,
+    rounds:[{guesses:[],done:false,win:false},{guesses:[],done:false,win:false},{guesses:[],done:false,win:false}]};
+  save();
+}
+/* total time actually spent playing (the clock pauses while you read results) */
+function playedMs(){
+  return store.today.activeMs + (store.today.segStart? Date.now()-store.today.segStart : 0);
+}
+
+/* game runtime */
+let mode='daily'; // 'daily' | 'practice'
+let DAILY=null;   // {gens:[{board,sol,diff} ×3]}
+let G=null;       // current round: {roundIdx, board, sol, diff, guesses, done, win}
+let picks=[];
+
+/* ============================================================
+   RENDER HELPERS
+   ============================================================ */
+function bigCard(c){return `<div class="bcard ${SUIT_COLOR[c.s]}">${rankLabel(c.r)}<span>${c.s}</span></div>`;}
+function inCard(c){return `<span class="icard ${SUIT_COLOR[c.s]}">${rankLabel(c.r)}${c.s}</span>`;}
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.style.display='block';
+  clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2200);
+}
+function openModal(id){document.getElementById(id).classList.add('active');}
+function closeModals(){document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('active'));}
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)closeModals();}));
+
+/* ============================================================
+   GAME SETUP
+   ============================================================ */
+function startDaily(){
+  mode='daily';
+  if(!DAILY){
+    DAILY={gens:ROUND_TARGETS.map((t,i)=>generateBoard(todayStr+'|R'+i,t))};
+  }
+  loadRound(store.today.round);
+}
+function loadRound(idx){
+  closeModals();
+  const gen=DAILY.gens[idx];
+  const saved=store.today.rounds[idx];
+  G={roundIdx:idx,board:gen.board,sol:gen.sol,diff:gen.diff,
+     guesses:saved.guesses.map(g=>g.map(k=>({r:+k.slice(0,-1),s:k.slice(-1)}))),
+     done:saved.done,win:saved.win};
+  renderAll();
+}
+function nextRound(){
+  store.today.round=G.roundIdx+1;
+  save();
+  loadRound(store.today.round);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function startPractice(){
+  closeModals();
+  mode='practice';
+  let gen=null;
+  for(let t=0;t<200&&!gen;t++){
+    const board=seededShuffle(freshDeck(),mulberry32((Math.random()*2**32)>>>0)).slice(0,5);
+    const sol=solveBoard(board);
+    if(eval5(board)===sol.score)continue;
+    if(catOf(sol.score)<4)continue;
+    gen={board,sol,diff:classify(board,sol)};
+  }
+  G={board:gen.board,sol:gen.sol,diff:gen.diff,guesses:[],done:false,win:false};
+  picks=[];
+  renderAll();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function renderAll(){
+  const num=puzzleNumber(todayStr);
+  document.getElementById('metaLine').innerHTML = mode==='daily'
+    ? `No. ${num} · Board <b>${G.roundIdx+1} of 3</b> · <b>${DIFF_LABEL[G.diff]}</b> · ⏱ <span id="stopwatch">0:00</span>`
+    : `<span class="practice-tag">Practice table</span> · <b>${DIFF_LABEL[G.diff]}</b> · no streaks, no stakes`;
+  document.getElementById('boardRow').innerHTML=G.board.map(bigCard).join('');
+  picks=[];
+  renderPicks();renderDots();renderGrid();renderLog();
+  document.getElementById('endPanelWrap').innerHTML='';
+  const sb=document.getElementById('submitBtn');
+  sb.textContent='Submit Guess';
+  sb.onclick=submitGuess;
+  if(G.done)showEnd();
+  updateSubmit();
+  tickStopwatch();
+}
+let swInterval=null;
+function tickStopwatch(){
+  clearInterval(swInterval);
+  const upd=()=>{
+    const el=document.getElementById('stopwatch');
+    if(!el)return;
+    el.textContent=fmtTime(playedMs());
+  };
+  upd();
+  if(mode==='daily'&&!store.today.allDone)swInterval=setInterval(upd,1000);
+}
+
+function renderGrid(){
+  const grid=document.getElementById('deckGrid');
+  grid.innerHTML='';
+  const gone=new Set(G.board.map(cardKey));
+  for(const s of SUITS){
+    for(let r=14;r>=2;r--){
+      const key=r+s;
+      const d=document.createElement('div');
+      d.className='dg-card '+SUIT_COLOR[s]+(gone.has(key)?' gone':'');
+      d.innerHTML=`${rankLabel(r)}<span>${s}</span>`;
+      if(!gone.has(key)&&!G.done){
+        d.onclick=()=>togglePick({r,s},d);
+      }
+      d.dataset.key=key;
+      grid.appendChild(d);
+    }
+  }
+}
+function togglePick(c,el){
+  if(G.done)return;
+  if(mode==='daily'&&!store.today.segStart&&!store.today.allDone){store.today.segStart=Date.now();save();}
+  const i=picks.findIndex(p=>cardKey(p)===cardKey(c));
+  if(i>=0){picks.splice(i,1);el.classList.remove('picked');}
+  else{
+    if(picks.length>=2){toast('Two cards only — tap a pick to remove it');return;}
+    picks.push(c);el.classList.add('picked');
+  }
+  renderPicks();updateSubmit();
+}
+function clearSlot(i){
+  if(G.done||!picks[i])return;
+  const key=cardKey(picks[i]);
+  picks.splice(i,1);
+  const el=document.querySelector(`.dg-card[data-key="${key}"]`);
+  if(el)el.classList.remove('picked');
+  renderPicks();updateSubmit();
+}
+function renderPicks(){
+  [0,1].forEach(i=>{
+    const slot=document.getElementById('slot'+i);
+    if(picks[i]){
+      slot.className='pick-slot filled '+SUIT_COLOR[picks[i].s];
+      slot.innerHTML=`${rankLabel(picks[i].r)}<span style="font-size:14px;">${picks[i].s}</span>`;
+    }else{
+      slot.className='pick-slot';
+      slot.innerHTML='<span class="pick-plus">+</span>';
+    }
+  });
+}
+function renderDots(){
+  const dots=document.getElementById('attDots');
+  dots.innerHTML='';
+  for(let i=0;i<3;i++){
+    const d=document.createElement('div');
+    d.className='att-dot';
+    const g=G.guesses[i];
+    if(g){
+      const sc=best7([...G.board,...g]);
+      d.classList.add(sc===G.sol.score?'win':(catOf(sc)===catOf(G.sol.score)?'close':'miss'));
+    }
+    dots.appendChild(d);
+  }
+}
+function updateSubmit(){
+  if(G.done)return; // showEnd owns the button once the round is over
+  document.getElementById('submitBtn').disabled=!(picks.length===2);
+}
+
+/* ============================================================
+   HINTS
+   ============================================================ */
+function vagueNudge(nCat){
+  switch(nCat){
+    case 4: return 'Read the board as a sequence of ranks — somewhere there\'s an open window.';
+    case 5: return 'Count the suits on the board. Today, owning a suit matters.';
+    case 7: return 'The board is paired — and pairs unlock the biggest families of hands.';
+    case 8: return 'Both the suits and the sequence matter today. The obvious ceiling isn\'t the real one.';
+    default:return 'Look again at what the board allows — ranks, suits, pairs.';
+  }
+}
+function explicitHint(nCat){
+  switch(nCat){
+    case 4: return 'Which two ranks stretch the board into the highest possible five-in-a-row?';
+    case 5: return 'The best flush belongs to whoever holds the two biggest missing cards of that suit.';
+    case 7: return 'Two copies of a board rank are still out there in the deck.';
+    case 8: return 'Find the two cards that complete a straight inside the flush suit.';
+    default:return '';
+  }
+}
+function sameCatHint(nCat){
+  switch(nCat){
+    case 4: return 'A higher straight fits this board — slide the window up.';
+    case 5: return 'The best flush belongs to the two biggest missing cards of the suit.';
+    case 7: return 'Your four of a kind is right — the fifth card, the kicker, decides it. Bring the biggest one.';
+    case 8: return 'Right idea — now find the highest straight flush the board allows.';
+    default:return 'Aim higher within it.';
+  }
+}
+function hintFor(guessScore,attemptIdx){
+  const gCat=catOf(guessScore),nCat=catOf(G.sol.score);
+  if(attemptIdx===0){
+    if(gCat===nCat)return `Right family — but a stronger ${CATNAME[nCat]} is out there. ${sameCatHint(nCat)}`;
+    return `A bigger kind of hand is possible. ${vagueNudge(nCat)}`;
+  }
+  if(gCat===nCat)return `It IS a ${CATNAME[nCat]} — but not the best one. ${sameCatHint(nCat)}`;
+  return `The nuts today is a ${CATNAME[nCat]}. ${explicitHint(nCat)}`;
+}
+
+/* ============================================================
+   GAME LOOP
+   ============================================================ */
+function submitGuess(){
+  if(picks.length!==2||G.done)return;
+  const dup=G.guesses.some(g=>{
+    const ks=g.map(cardKey).sort().join();
+    return ks===picks.map(cardKey).sort().join();
+  });
+  if(dup){
+    document.getElementById('pickRow').classList.add('shake');
+    setTimeout(()=>document.getElementById('pickRow').classList.remove('shake'),400);
+    toast('You already tried those two');
+    return;
+  }
+  const guess=picks.slice();
+  G.guesses.push(guess);
+  if(mode==='daily'){
+    store.today.rounds[G.roundIdx].guesses=G.guesses.map(g=>g.map(cardKey));
+    save();
+  }
+  const sc=best7([...G.board,...guess]);
+  const win=sc===G.sol.score;
+  if(win){G.done=true;G.win=true;}
+  else if(G.guesses.length>=3){G.done=true;G.win=false;}
+
+  renderLog();
+  renderDots();
+  picks.forEach(p=>{
+    const el=document.querySelector(`.dg-card[data-key="${cardKey(p)}"]`);
+    if(el)el.classList.remove('picked');
+  });
+  picks=[];
+  renderPicks();updateSubmit();
+
+  if(G.done){
+    if(mode==='daily')finishRound();
+    document.getElementById('submitBtn').disabled=true;
+    setTimeout(showEnd,800); // let the last guess's feedback land before the popup
+  }
+}
+function renderLog(){
+  const log=document.getElementById('guessLog');
+  log.innerHTML='';
+  G.guesses.forEach((g,i)=>{
+    const sc=best7([...G.board,...g]);
+    const win=sc===G.sol.score;
+    const close=!win&&catOf(sc)===catOf(G.sol.score);
+    const e=document.createElement('div');
+    e.className='guess-entry'+(win?' win':(close?' close':''));
+    let html=`<span class="gcards">${g.map(inCard).join('')}</span> makes <b>${describeScore(sc)}</b>.`;
+    if(win)html+=` <span class="hint">That's the nuts.</span>`;
+    else if(i<2)html+=`<br><span class="hint">${hintFor(sc,i)}</span>`;
+    e.innerHTML=html;
+    log.appendChild(e);
+  });
+}
+function finishRound(){
+  const m=store.meta;
+  const R=store.today.rounds[G.roundIdx];
+  R.done=true;R.win=G.win;
+  if(store.today.segStart){ // pause the clock while results are read
+    store.today.activeMs+=Date.now()-store.today.segStart;
+    store.today.segStart=null;
+  }
+  if(G.roundIdx===0){
+    // board one is the streak board
+    m.played++;
+    if(G.win){
+      m.wins++;
+      m.dist[G.guesses.length]=(m.dist[G.guesses.length]||0)+1;
+      m.streak=(m.lastWinDate===prevDateStr(todayStr))?m.streak+1:1;
+      m.maxStreak=Math.max(m.maxStreak,m.streak);
+      m.lastWinDate=todayStr;
+    }else{
+      m.streak=0;
+    }
+  }
+  if(G.roundIdx===2){
+    store.today.allDone=true;
+    if(store.today.rounds.every(r=>r.win))m.sweeps=(m.sweeps||0)+1;
+  }
+  save();
+}
+
+/* ============================================================
+   END STATE & SHARE
+   ============================================================ */
+function readingFor(){
+  const {cat}=decodeScore(G.sol.score);
+  const tx=boardTexture(G.board);
+  const w=G.sol.winners[0];
+  const holeStr=w.map(c=>rankLabel(c.r)+c.s).join(' ');
+  const alt=G.sol.winners.length>1?` In fact, <b>${G.sol.winners.length} different holdings</b> tie for it.`:' Only <b>one exact holding</b> does it — brutal.';
+  let why='';
+  if(cat===8)why=`Three ${tx.flushSuit} on the board look like a flush day — but they also connect. <b>${holeStr}</b> completes ${describeScore(G.sol.score)}, and no flush survives it.`;
+  else if(cat===7)why=`The board is paired — which means both missing ${plural(tx.pairRank)} were live. <b>${holeStr}</b> makes ${describeScore(G.sol.score)}.`;
+  else if(cat===5)why=`With three ${tx.flushSuit} showing, the crown goes to the two biggest missing ${tx.flushSuit}: <b>${holeStr}</b> makes ${describeScore(G.sol.score)}.`;
+  else why=`Read the ranks as a sequence: <b>${holeStr}</b> stretches the board into ${describeScore(G.sol.score)} — the highest straight this board allows.`;
+  return why+alt;
+}
+function fmtTime(ms){
+  const s=Math.floor(ms/1000);
+  return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+}
+const APP_URL='https://daily-nuts.vercel.app';
+function shareText(){
+  const num=puzzleNumber(todayStr);
+  const m=store.meta;
+  const wonCount=store.today.rounds.filter(r=>r.win).length;
+  const label=wonCount===3?'swept 3/3':`cracked ${wonCount}/3`;
+  const t=store.today.activeMs>0?' · '+fmtTime(store.today.activeMs):'';
+  const streak=m.streak>1?` 🔥${m.streak}`:'';
+  const grid=store.today.rounds.map((r,i)=>
+    r.guesses.map(gk=>{
+      const g=gk.map(k=>({r:+k.slice(0,-1),s:k.slice(-1)}));
+      const sc=best7([...DAILY.gens[i].board,...g]);
+      return sc===DAILY.gens[i].sol.score?'🟩':(catOf(sc)===catOf(DAILY.gens[i].sol.score)?'🟨':'🟥');
+    }).join('')
+  ).join('\n');
+  return `The Daily Nuts #${num} · ${label}${t}${streak}\n${grid}\nCan you find the nuts?`+(APP_URL?`\n${APP_URL}`:'');
+}
+function copyShare(){
+  const txt=shareText();
+  if(navigator.share&&/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)){
+    navigator.share({text:txt}).catch(()=>{});
+    return;
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(()=>toast('Copied — drop it in the group chat'),()=>fallbackCopy(txt));
+  }else fallbackCopy(txt);
+}
+function fallbackCopy(txt){
+  const ta=document.createElement('textarea');
+  ta.value=txt;document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');toast('Copied — drop it in the group chat');}catch(e){toast('Copy failed — long-press to select');}
+  document.body.removeChild(ta);
+}
+function showEnd(){
+  const wrap=document.getElementById('endPanelWrap');
+  const w=G.sol.winners[0];
+  const m=store.meta;
+  const isFinal = mode==='daily' && G.roundIdx===2;
+  const title=G.win
+    ? ['','First try. Table vision.','Second attempt — solid read.','Third time lucky — it counts.'][G.guesses.length]
+    : 'The nuts stayed hidden — here\'s the read you missed.';
+  let extra='';
+  if(mode==='practice'){
+    extra=`<div class="btn-row" style="margin-top:14px;">
+        <button class="btn primary" onclick="startPractice()">New practice board</button>
+        <button class="btn ghost" onclick="startDaily()">Back to today's gauntlet</button>
+      </div>`;
+  } else if(!isFinal){
+    const streakNote = G.roundIdx===0
+      ? `<div class="streak-line" style="margin-top:10px;">${G.win
+          ? `Streak safe — <b>🔥${m.streak}</b>. The next two boards are for glory.`
+          : `Streak reset — but the gauntlet isn't over. Two boards left.`}</div>`
+      : '';
+    extra=`${streakNote}
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn primary" onclick="nextRound()">Board ${G.roundIdx+2} of 3 &rarr;</button>
+      </div>`;
+  } else {
+    const wonCount=store.today.rounds.filter(r=>r.win).length;
+    const swept=wonCount===3;
+    const rows=store.today.rounds.map((r,i)=>
+      `<div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-dim);margin:3px 0;">
+         <span>${DIFF_LABEL[DAILY.gens[i].diff]}</span>
+         <span>${r.win?`cracked in ${r.guesses.length}`:'missed'}</span>
+       </div>`).join('');
+    const timeStr=store.today.activeMs>0?fmtTime(store.today.activeMs):'—';
+    extra=`
+      <div style="border-top:1px solid rgba(203,161,53,.3);margin:14px 0 8px;padding-top:12px;">
+        <div class="end-sub" style="margin-bottom:8px;">${swept?'🏆 CLEAN SWEEP':`${wonCount} OF 3 BOARDS`} · ${timeStr}</div>
+        ${rows}
+      </div>
+      <div class="streak-line">Streak <b>${m.streak}</b> · Best <b>${m.maxStreak}</b> · Sweeps <b>${m.sweeps||0}</b></div>
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn primary" onclick="copyShare()">Share result</button>
+        <button class="btn ghost" onclick="startPractice()">Practice table</button>
+      </div>
+      <div class="countdown">Next gauntlet in <b id="cdown">–</b></div>`;
+  }
+  wrap.innerHTML='';
+  document.getElementById('resultModalBody').innerHTML=`
+    <div style="text-align:center;">
+      <div class="end-title">${G.win?'🃏 The Nuts!':'Not today.'}</div>
+      <div class="end-sub">${title}</div>
+      <div class="nuts-reveal">${w.map(bigCard).join('')}</div>
+      <div class="nuts-name">${describeScore(G.sol.score)}</div>
+      <div class="reading">${readingFor()}</div>
+      ${extra}
+    </div>`;
+  openModal('resultModal');
+  setSubmitAsResult();
+  if(isFinal)tickCountdown();
+  tickStopwatch();
+}
+/* when a round is over, the submit button becomes the way back to the result */
+function setSubmitAsResult(){
+  const b=document.getElementById('submitBtn');
+  b.disabled=false;
+  b.textContent='View result';
+  b.onclick=()=>openModal('resultModal');
+}
+function tickCountdown(){
+  const el=document.getElementById('cdown');
+  if(!el)return;
+  const now=new Date();
+  const mid=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1);
+  const ms=mid-now;
+  if(ms<=1000){ location.reload(); return; } // midnight — bring in the new gauntlet
+  const h=Math.floor(ms/3600000),mi=Math.floor(ms%3600000/60000),s=Math.floor(ms%60000/1000);
+  el.textContent=`${String(h).padStart(2,'0')}:${String(mi).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  setTimeout(tickCountdown,1000);
+}
+
+/* ============================================================
+   MODALS CONTENT
+   ============================================================ */
+function renderLadder(){
+  const EX={
+    'Royal Flush':'A♠ K♠ Q♠ J♠ 10♠','Straight Flush':'9♥ 8♥ 7♥ 6♥ 5♥',
+    'Four of a Kind':'Q♣ Q♦ Q♥ Q♠ 7♦','Full House':'J♦ J♣ J♠ 4♥ 4♦',
+    'Flush':'A♦ J♦ 8♦ 6♦ 2♦','Straight':'9♣ 8♦ 7♥ 6♠ 5♦',
+    'Three of a Kind':'8♠ 8♥ 8♦ K♣ 2♦','Two Pair':'K♠ K♦ 9♥ 9♣ 5♠',
+    'One Pair':'10♥ 10♣ A♠ 7♦ 3♣','High Card':'A♣ J♥ 8♠ 6♦ 2♥'
+  };
+  document.getElementById('ladderList').innerHTML=
+    Object.entries(EX).map(([n,ex])=>`<div class="ladder-row"><b>${n}</b><span>${ex}</span></div>`).join('');
+}
+function renderStats(){
+  const m=store.meta;
+  const pct=m.played?Math.round(m.wins/m.played*100):0;
+  document.getElementById('statGrid').innerHTML=`
+    <div><b>${m.played}</b><span>Played</span></div>
+    <div><b>${pct}%</b><span>Board 1 wins</span></div>
+    <div><b>${m.streak}</b><span>Streak</span></div>
+    <div><b>${m.maxStreak}</b><span>Best</span></div>
+    <div><b>${m.sweeps||0}</b><span>Sweeps</span></div>`;
+  const mx=Math.max(1,m.dist[1]||0,m.dist[2]||0,m.dist[3]||0);
+  document.getElementById('distRows').innerHTML=[1,2,3].map(i=>
+    `<div class="dist-row"><span>${i}</span><div class="dist-bar" style="width:${((m.dist[i]||0)/mx)*88}%">${m.dist[i]||0}</div></div>`).join('');
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+renderLadder();
+startDaily();
+if(!store.meta.helpSeen){
+  openModal('helpModal');
+  store.meta.helpSeen=true;
+  save();
+}
+</script>
+</body>
+</html>
