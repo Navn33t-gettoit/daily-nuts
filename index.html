@@ -8,6 +8,12 @@
 <meta property="og:title" content="The Daily Nuts — One Board a Day">
 <meta property="og:description" content="Three boards, escalating difficulty, same for everyone on Earth. Can you find the nuts?">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://daily-nuts.vercel.app">
+<meta property="og:image" content="https://daily-nuts.vercel.app/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://daily-nuts.vercel.app/og.jpg">
 <meta name="theme-color" content="#0b0d0d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🃏</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -295,7 +301,32 @@
 
 <div id="toast"></div>
 
+<script defer src="/_vercel/insights/script.js"></script>
 <script>
+/* ============================================================
+   ERROR REPORTING — beacons client errors to /api/log (prod only)
+   ============================================================ */
+(function(){
+  if(location.protocol!=='https:')return;
+  let sent=0;
+  function report(p){
+    if(sent>=5)return; sent++;
+    try{
+      const body=JSON.stringify(p);
+      if(navigator.sendBeacon)navigator.sendBeacon('/api/log',body);
+      else fetch('/api/log',{method:'POST',body,keepalive:true}).catch(()=>{});
+    }catch(e){}
+  }
+  window.addEventListener('error',e=>report({
+    msg:e.message,src:e.filename,line:e.lineno,col:e.colno,
+    stack:e.error&&e.error.stack,at:new Date().toISOString()
+  }));
+  window.addEventListener('unhandledrejection',e=>report({
+    msg:'unhandledrejection: '+(e.reason&&e.reason.message||String(e.reason)),
+    stack:e.reason&&e.reason.stack,at:new Date().toISOString()
+  }));
+})();
+
 /* ============================================================
    CARDS & EVALUATOR
    ============================================================ */
