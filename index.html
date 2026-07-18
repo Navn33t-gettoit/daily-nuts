@@ -26,6 +26,8 @@
     --gold-bright:#e6c565;
     --cream:#f3ead9;
     --text-dim:#9aa39c;
+    --text-main:#f3ead9;
+    --border:rgba(203,161,53,.35);
     --card-bg:#f3ead9;
     --danger:#b4425a;
     --ok:#4a9d6f;
@@ -95,8 +97,17 @@
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     font-weight:700;font-size:16px;cursor:pointer;
   }
-  .pick-slot.filled{background:var(--card-bg);border:none;box-shadow:0 3px 8px rgba(0,0,0,.4);}
+  .pick-slot.filled{background:var(--card-bg);border:none;box-shadow:0 3px 8px rgba(0,0,0,.4);animation:none;}
   .pick-plus{color:rgba(203,161,53,.6);font-size:18px;font-weight:400;}
+  @keyframes pulse-empty {
+    0% { box-shadow: 0 0 0 0 rgba(220, 180, 80, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 180, 80, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 180, 80, 0); }
+  }
+  .empty-slot-pulse {
+    animation: pulse-empty 2s infinite;
+    border-color: var(--gold-bright) !important;
+  }
   .att-dots{display:flex;gap:7px;margin-left:14px;}
   .att-dot{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.15);}
   .att-dot.win{background:var(--ok);}
@@ -227,6 +238,18 @@
     <div style="font-size:13px; color:var(--text-dim);">Pre-loading Devilish boards</div>
   </div>
 
+  <div id="tutorialModal" style="display:none; position:fixed; inset:0; background:rgba(15,20,25,0.9); z-index:200; align-items:center; justify-content:center; padding:20px; backdrop-filter: blur(4px);">
+    <div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:400px; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <h2 style="color:var(--gold-bright); margin-top:0; font-family:'Playfair Display',serif;">How to Play</h2>
+      <ul style="text-align:left; color:var(--text-main); font-size:15px; line-height:1.6; padding-left:20px; margin-bottom:24px;">
+        <li style="margin-bottom:8px;"><b>Read the Board:</b> Look at the 5 community cards.</li>
+        <li style="margin-bottom:8px;"><b>Find the Nuts:</b> Tap the 2 empty slots to pick the perfect hole cards from the deck.</li>
+        <li><b>Be Unbeatable:</b> Your 7-card combination must create the absolute highest-scoring poker hand possible.</li>
+      </ul>
+      <button class="btn primary" onclick="closeTutorial()" style="width:100%;">Got it, let's play</button>
+    </div>
+  </div>
+
   <header class="top">
     <button class="hbtn" onclick="openModal('helpModal')" title="How to play">?</button>
     <div class="brand">THE DAILY NUTS</div>
@@ -239,11 +262,11 @@
   <div class="meta-line" id="metaLine"></div>
   <div class="board-row" id="boardRow"></div>
   <div class="board-cap">Today's gauntlet — three boards, shared by every player</div>
-  <div class="prompt" id="promptLine">Pick the <b>two hole cards</b> that make the <b>best possible hand</b> on this board.</div>
+  <div class="prompt" id="promptLine">Tap the empty cards below to build the absolute best possible poker hand.</div>
 
   <div class="pick-row" id="pickRow">
-    <div class="pick-slot" id="slot0" onclick="clearSlot(0)"><span class="pick-plus">+</span></div>
-    <div class="pick-slot" id="slot1" onclick="clearSlot(1)"><span class="pick-plus">+</span></div>
+    <div class="pick-slot empty-slot-pulse" id="slot0" onclick="clearSlot(0)"><span class="pick-plus">+</span></div>
+    <div class="pick-slot empty-slot-pulse" id="slot1" onclick="clearSlot(1)"><span class="pick-plus">+</span></div>
     <div class="att-dots" id="attDots"></div>
   </div>
 
@@ -773,7 +796,7 @@ function renderPicks(){
       slot.className='pick-slot filled '+SUIT_COLOR[picks[i].s];
       slot.innerHTML=`${rankLabel(picks[i].r)}<span style="font-size:14px;">${picks[i].s}</span>`;
     }else{
-      slot.className='pick-slot';
+      slot.className='pick-slot empty-slot-pulse';
       slot.innerHTML='<span class="pick-plus">+</span>';
     }
   });
@@ -1118,12 +1141,27 @@ function renderStats(){
 }
 
 /* ============================================================
+   FIRST-TIMER TUTORIAL
+   ============================================================ */
+function closeTutorial() {
+  document.getElementById('tutorialModal').style.display = 'none';
+  localStorage.setItem('dailyNutsTutorialSeen', 'true');
+}
+
+// Show modal on load if they haven't seen it
+document.addEventListener('DOMContentLoaded', () => {
+  if (!localStorage.getItem('dailyNutsTutorialSeen')) {
+    document.getElementById('tutorialModal').style.display = 'flex';
+  }
+});
+
+/* ============================================================
    INIT
    ============================================================ */
 renderLadder();
 startDaily();
+// First-timers get #tutorialModal (above). Full help stays on "?" in the header.
 if(!store.meta.helpSeen){
-  openModal('helpModal');
   store.meta.helpSeen=true;
   save();
 }
